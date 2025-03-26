@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -12,7 +11,7 @@
     <div class="container">
         <header>
             <h1><i class="fas fa-home"></i> Home Energy Insights</h1>
-            <p>Discover your home's energy profile</p>
+            <p>Get instant estimates for your home's energy profile</p>
         </header>
         <main>
             <form id="addressForm">
@@ -21,43 +20,74 @@
                     <input 
                         type="search" 
                         id="addressInput" 
-                        placeholder="Enter Address (e.g., 155 Yonge Street, Toronto, ON)" 
+                        placeholder="Enter your address or postal code" 
                         required
                         aria-label="Address Input"
                     >
                 </div>
                 <button type="submit">
-                    <i class="fas fa-search"></i> Analyze
+                    <i class="fas fa-search"></i> Get Estimates
                 </button>
             </form>
             
-            <div id="addressDetails" class="address-details hidden">
-                <h3><i class="fas fa-map-marked-alt"></i> Address Details</h3>
-                <p><strong>Full Address:</strong> <span id="fullAddress">-</span></p>
-                <p><strong>Region:</strong> <span id="region">-</span></p>
-                <p><strong>Country:</strong> <span id="country">-</span></p>
-            </div>
-            
             <div id="loadingIndicator" class="loader hidden">
                 <div class="spinner"></div>
-                <p>Analyzing your home...</p>
+                <p>Analyzing your location...</p>
             </div>
-            <div id="resultsContainer" class="results-grid hidden">
-                <div class="result-card">
-                    <h3><i class="fas fa-ruler-combined"></i> House Size</h3>
-                    <p id="houseSizeResult">-</p>
-                </div>
-                <div class="result-card">
-                    <h3><i class="fas fa-window-maximize"></i> Window Count</h3>
-                    <p id="windowCountResult">-</p>
-                </div>
-                <div class="result-card">
-                    <h3><i class="fas fa-bolt"></i> Monthly Energy</h3>
-                    <p id="energyUsageResult">-</p>
-                </div>
-            </div>
+            
             <div id="errorContainer" class="error-section hidden">
                 <p id="errorMessage">Unable to retrieve data</p>
+            </div>
+
+            <div id="resultsContainer" class="results-container hidden">
+                <div class="results-grid">
+                    <div class="result-card">
+                        <div class="card-icon">
+                            <i class="fas fa-map-marked-alt"></i>
+                        </div>
+                        <h3>Location Details</h3>
+                        <div class="card-content">
+                            <p><strong>Address:</strong> <span id="fullAddress">-</span></p>
+                            <p><strong>Region:</strong> <span id="region">-</span></p>
+                            <p><strong>City:</strong> <span id="city">-</span></p>
+                            <p><strong>Neighbourhood:</strong> <span id="neighbourhood">-</span></p>
+                        </div>
+                    </div>
+
+                    <div class="result-card">
+                        <div class="card-icon">
+                            <i class="fas fa-ruler-combined"></i>
+                        </div>
+                        <h3>House Size</h3>
+                        <div class="card-content">
+                            <p><strong>Estimated Size:</strong> <span id="houseSize">-</span></p>
+                            <p><strong>Typical Range:</strong> <span id="houseSizeRange">-</span></p>
+                            <p><strong>Style:</strong> <span id="houseStyle">-</span></p>
+                        </div>
+                    </div>
+
+                    <div class="result-card">
+                        <div class="card-icon">
+                            <i class="fas fa-window-maximize"></i>
+                        </div>
+                        <h3>Windows</h3>
+                        <div class="card-content">
+                            <p><strong>Estimated Windows:</strong> <span id="windowCount">-</span></p>
+                            <p><strong>Typical Range:</strong> <span id="windowRange">-</span></p>
+                        </div>
+                    </div>
+
+                    <div class="result-card">
+                        <div class="card-icon">
+                            <i class="fas fa-bolt"></i>
+                        </div>
+                        <h3>Energy Usage</h3>
+                        <div class="card-content">
+                            <p><strong>Monthly:</strong> <span id="monthlyEnergy">-</span></p>
+                            <p><strong>Annual:</strong> <span id="annualEnergy">-</span></p>
+                        </div>
+                    </div>
+                </div>
             </div>
         </main>
     </div>
