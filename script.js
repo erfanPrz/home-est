@@ -3,7 +3,7 @@ const CONFIG = {
     ENDPOINTS: {
         NOMINATIM: 'https://nominatim.openstreetmap.org/search',
         CORS_PROXY: 'https://api.allorigins.win/raw?url=',
-        ENERGY_DATA: 'https://api.eia.gov/v2/electricity/rto/region-data/data/'
+        WEATHER: 'https://api.open-meteo.com/v1/forecast'
     }
 };
 
@@ -20,10 +20,7 @@ const DOM = {
     city: document.getElementById('city'),
     neighbourhood: document.getElementById('neighbourhood'),
     houseSize: document.getElementById('houseSize'),
-    houseSizeRange: document.getElementById('houseSizeRange'),
-    houseStyle: document.getElementById('houseStyle'),
     windowCount: document.getElementById('windowCount'),
-    windowRange: document.getElementById('windowRange'),
     monthlyEnergy: document.getElementById('monthlyEnergy'),
     annualEnergy: document.getElementById('annualEnergy')
 };
@@ -54,15 +51,15 @@ class HomeEnergyEstimator {
             const addressData = await this.validateAddress(address);
             console.log('Address data received:', addressData);
 
-            // Step 2: Get house details
-            const houseDetails = this.estimateHouseDetails(addressData);
+            // Step 2: Calculate house details based on address
+            const houseDetails = this.calculateHouseDetails(addressData);
             console.log('House details calculated:', houseDetails);
 
             // Step 3: Get energy usage
-            const energyUsage = await this.getEnergyUsage(addressData.latitude, addressData.longitude, addressData.region);
+            const energyUsage = await this.getEnergyUsage(addressData.latitude, addressData.longitude);
             console.log('Energy usage calculated:', energyUsage);
 
-            // Step 4: Display all results
+            // Step 4: Display results
             this.displayResults(addressData, houseDetails, energyUsage);
 
             DOM.loadingIndicator.classList.add('hidden');
@@ -187,43 +184,28 @@ class HomeEnergyEstimator {
         }
     }
 
-    estimateHouseDetails(addressData) {
-        // Base house size varies by region and city type
+    calculateHouseDetails(addressData) {
+        // Base house size by region (in square feet)
         const baseSizeByRegion = {
-            'Ontario': {
-                'Toronto': 1800,
-                'Mississauga': 2200,
-                'Ottawa': 2000,
-                'Hamilton': 1900,
-                'default': 2000
-            },
-            'British Columbia': {
-                'Vancouver': 1700,
-                'Surrey': 2200,
-                'Burnaby': 1900,
-                'Victoria': 1800,
-                'default': 2200
-            },
-            'Quebec': {
-                'Montreal': 1600,
-                'Quebec City': 1700,
-                'Laval': 1900,
-                'default': 1800
-            },
-            'Alberta': {
-                'Calgary': 2100,
-                'Edmonton': 2000,
-                'Red Deer': 2200,
-                'default': 2100
-            },
-            'default': 2000
+            'Ontario': 2000,
+            'British Columbia': 1800,
+            'Quebec': 1600,
+            'Alberta': 2200,
+            'Manitoba': 1900,
+            'Saskatchewan': 2100,
+            'Nova Scotia': 1700,
+            'New Brunswick': 1700,
+            'Newfoundland and Labrador': 1600,
+            'Prince Edward Island': 1600,
+            'Yukon': 1800,
+            'Northwest Territories': 1900,
+            'Nunavut': 1800
         };
 
-        // Get base size for the region and city
-        const regionData = baseSizeByRegion[addressData.region] || baseSizeByRegion['default'];
-        const baseSize = regionData[addressData.city] || regionData['default'];
+        // Get base size for the region
+        const baseSize = baseSizeByRegion[addressData.region] || 1800;
 
-        // Adjust size based on neighbourhood type (if available)
+        // Adjust size based on neighbourhood type
         let neighbourhoodFactor = 1;
         if (addressData.neighbourhood) {
             const lowerNeighbourhoods = ['downtown', 'core', 'central', 'old town', 'historic'];
@@ -240,98 +222,96 @@ class HomeEnergyEstimator {
             if (upperMatch) neighbourhoodFactor = 1.2;
         }
 
-        // Add variation based on latitude (colder climates tend to have smaller houses)
-        const latitudeFactor = 1 - (Math.abs(addressData.latitude) / 90) * 0.2;
+        // Adjust size based on city type
+        let cityFactor = 1;
+        if (addressData.city) {
+            const majorCities = ['Toronto', 'Vancouver', 'Montreal', 'Calgary', 'Edmonton', 'Ottawa'];
+            const isMajorCity = majorCities.includes(addressData.city);
+            cityFactor = isMajorCity ? 0.9 : 1.1; // Smaller houses in major cities
+        }
 
-        // Add random variation (±15%)
-        const randomFactor = 0.85 + Math.random() * 0.3;
+        // Calculate final house size
+        const houseSize = Math.round(baseSize * neighbourhoodFactor * cityFactor);
 
-        // Calculate final size
-        const estimatedSize = Math.round(baseSize * neighbourhoodFactor * latitudeFactor * randomFactor);
-
-        // Calculate window count based on house size and style
-        // More windows in modern homes, fewer in older homes
-        const isModern = Math.random() > 0.5; // 50% chance of modern style
-        const windowsPerSqFt = isModern ? 0.012 : 0.008; // Modern homes have more windows
-        const windowCount = Math.round(estimatedSize * windowsPerSqFt);
-        
-        // Add variation to window count (±25%)
-        const windowVariation = Math.round(windowCount * 0.25);
+        // Calculate window count based on house size and location
+        // More windows in warmer climates, fewer in colder climates
+        const latitudeFactor = 1 - (Math.abs(addressData.latitude) / 90) * 0.3;
+        const windowsPerSqFt = 0.01 * latitudeFactor; // Base rate of 1 window per 100 sq ft
+        const windowCount = Math.round(houseSize * windowsPerSqFt);
 
         return {
-            size: estimatedSize,
-            sizeRange: `${estimatedSize - 200} - ${estimatedSize + 200} sq ft`,
-            windows: windowCount,
-            windowRange: `${windowCount - windowVariation} - ${windowCount + windowVariation} windows`,
-            style: isModern ? 'Modern' : 'Traditional'
+            size: houseSize,
+            windows: windowCount
         };
     }
 
-    async getEnergyUsage(latitude, longitude, region) {
+    async getEnergyUsage(latitude, longitude) {
         try {
-            // Base usage varies by region
-            const baseUsageByRegion = {
-                'Ontario': 900,
-                'British Columbia': 850,
-                'Quebec': 950,
-                'Alberta': 1000,
-                'Manitoba': 850,
-                'Saskatchewan': 950,
-                'Nova Scotia': 900,
-                'New Brunswick': 850,
-                'Newfoundland and Labrador': 900,
-                'Prince Edward Island': 850,
-                'Yukon': 1000,
-                'Northwest Territories': 1200,
-                'Nunavut': 1200
-            };
+            // Get weather data for the location using OpenMeteo API
+            const weatherUrl = `${CONFIG.ENDPOINTS.WEATHER}?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,wind_speed_10m&timezone=auto`;
+            const proxyUrl = `${CONFIG.ENDPOINTS.CORS_PROXY}${encodeURIComponent(weatherUrl)}`;
 
-            // Get the current month (0-11)
-            const currentMonth = new Date().getMonth();
-            
-            // Seasonal factors based on month
-            const seasonalFactors = {
-                // Winter months (high heating)
-                0: 1.4,  // January
-                1: 1.3,  // February
-                2: 1.2,  // March
-                // Spring months (moderate)
-                3: 0.9,  // April
-                4: 0.8,  // May
-                5: 0.7,  // June
-                // Summer months (high cooling)
-                6: 0.8,  // July
-                7: 0.8,  // August
-                8: 0.7,  // September
-                // Fall months (moderate)
-                9: 0.8,  // October
-                10: 0.9, // November
-                11: 1.2  // December
-            };
+            console.log('Fetching weather data:', proxyUrl);
 
-            // Get base usage based on region or default to 900
-            const baseUsage = baseUsageByRegion[region] || 900;
+            const response = await fetch(proxyUrl, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json'
+                }
+            });
 
-            // Apply seasonal factor
-            const seasonalFactor = seasonalFactors[currentMonth];
+            if (!response.ok) {
+                console.error('Weather API error response:', response.status, response.statusText);
+                throw new Error(`Weather API error: ${response.status} ${response.statusText}`);
+            }
 
-            // Calculate latitude-based adjustment (higher latitudes have more seasonal variation)
-            const latitudeFactor = Math.abs(Math.sin(latitude * Math.PI / 180)) * 0.2 + 0.8;
+            const data = await response.json();
+            console.log('Weather API response:', data);
+
+            if (!data || !data.current) {
+                throw new Error('Invalid weather data received');
+            }
+
+            // Get current weather conditions
+            const temp = data.current.temperature_2m;
+            const humidity = data.current.relative_humidity_2m;
+            const windSpeed = data.current.wind_speed_10m;
+
+            // Calculate energy usage based on weather conditions
+            let baseUsage;
+            if (temp < 0) {
+                // Winter heating
+                baseUsage = 1500 + (Math.abs(temp) * 100);
+            } else if (temp > 25) {
+                // Summer cooling
+                baseUsage = 1000 + ((temp - 25) * 50);
+            } else {
+                // Moderate temperature
+                baseUsage = 800;
+            }
+
+            // Adjust for humidity and wind speed
+            const humidityFactor = 1 + (humidity / 100) * 0.2;
+            const windFactor = 1 + (windSpeed / 10) * 0.1;
+            const latitudeFactor = 1 + (Math.abs(latitude) / 90) * 0.3;
 
             // Calculate final monthly usage
-            const monthlyUsage = baseUsage * seasonalFactor * latitudeFactor;
-
-            // Add some random variation (±10%) to make it more realistic
-            const variation = 0.9 + Math.random() * 0.2;
-            const finalMonthlyUsage = monthlyUsage * variation;
+            const monthlyUsage = Math.round(baseUsage * humidityFactor * windFactor * latitudeFactor);
+            const annualUsage = monthlyUsage * 12;
 
             return {
-                monthly: Math.round(finalMonthlyUsage),
-                annual: Math.round(finalMonthlyUsage * 12)
+                monthly: monthlyUsage,
+                annual: annualUsage,
+                temperature: temp,
+                humidity: humidity,
+                windSpeed: windSpeed
             };
         } catch (error) {
-            console.error('Error in getEnergyUsage:', error);
-            throw new Error('Could not calculate energy usage.');
+            console.error('Error fetching weather data:', error);
+            if (error.message.includes('404')) {
+                throw new Error('Weather data not available for this location.');
+            }
+            throw new Error('Unable to fetch energy usage data. Please try again later.');
         }
     }
 
@@ -344,10 +324,7 @@ class HomeEnergyEstimator {
 
         // Display house details
         DOM.houseSize.textContent = `${houseDetails.size} sq ft`;
-        DOM.houseSizeRange.textContent = houseDetails.sizeRange;
-        DOM.houseStyle.textContent = houseDetails.style;
         DOM.windowCount.textContent = houseDetails.windows;
-        DOM.windowRange.textContent = houseDetails.windowRange;
 
         // Display energy usage
         DOM.monthlyEnergy.textContent = `${energyUsage.monthly} kWh`;
