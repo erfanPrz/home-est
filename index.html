@@ -1,0 +1,66 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home Energy Insights</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-home"></i> Home Energy Insights</h1>
+            <p>Discover your home's energy profile</p>
+        </header>
+        <main>
+            <form id="addressForm">
+                <div class="input-wrapper">
+                    <i class="fas fa-map-marker-alt input-icon"></i>
+                    <input 
+                        type="search" 
+                        id="addressInput" 
+                        placeholder="Enter Address (e.g., 155 Yonge Street, Toronto, ON)" 
+                        required
+                        aria-label="Address Input"
+                    >
+                </div>
+                <button type="submit">
+                    <i class="fas fa-search"></i> Analyze
+                </button>
+            </form>
+            
+            <div id="addressDetails" class="address-details hidden">
+                <h3><i class="fas fa-map-marked-alt"></i> Address Details</h3>
+                <p><strong>Full Address:</strong> <span id="fullAddress">-</span></p>
+                <p><strong>Region:</strong> <span id="region">-</span></p>
+                <p><strong>Country:</strong> <span id="country">-</span></p>
+            </div>
+            
+            <div id="loadingIndicator" class="loader hidden">
+                <div class="spinner"></div>
+                <p>Analyzing your home...</p>
+            </div>
+            <div id="resultsContainer" class="results-grid hidden">
+                <div class="result-card">
+                    <h3><i class="fas fa-ruler-combined"></i> House Size</h3>
+                    <p id="houseSizeResult">-</p>
+                </div>
+                <div class="result-card">
+                    <h3><i class="fas fa-window-maximize"></i> Window Count</h3>
+                    <p id="windowCountResult">-</p>
+                </div>
+                <div class="result-card">
+                    <h3><i class="fas fa-bolt"></i> Monthly Energy</h3>
+                    <p id="energyUsageResult">-</p>
+                </div>
+            </div>
+            <div id="errorContainer" class="error-section hidden">
+                <p id="errorMessage">Unable to retrieve data</p>
+            </div>
+        </main>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
